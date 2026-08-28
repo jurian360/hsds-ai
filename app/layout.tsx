@@ -11,13 +11,13 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-neutral-50 text-neutral-900 antialiased">
+      <body className="min-h-screen bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
         <div className="mx-auto max-w-5xl px-6 py-8">
-          <header className="mb-8 flex items-center justify-between border-b border-neutral-200 pb-4">
+          <header className="mb-8 flex items-center justify-between border-b border-neutral-200 pb-4 dark:border-neutral-800">
             <a href="/" className="text-lg font-medium tracking-tight">
               Product builder
             </a>
-            <span className="text-sm text-neutral-500">Internal tool · demo</span>
+            <span className="text-sm text-neutral-500 dark:text-neutral-400">Internal tool · demo</span>
           </header>
           {children}
         </div>

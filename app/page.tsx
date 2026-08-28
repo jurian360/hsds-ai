@@ -86,15 +86,15 @@ export default function HomePage() {
     <div className="space-y-10">
       <section>
         <h1 className="mb-1 text-xl font-medium">New product</h1>
-        <p className="mb-4 text-sm text-neutral-500">
+        <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
           Enter the basics, then generate grounded copy and images on the next screen.
         </p>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 rounded-lg border border-neutral-200 bg-white p-5 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 rounded-lg border border-neutral-200 bg-white p-5 sm:grid-cols-2 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="sm:col-span-1">
-            <label className="mb-1 block text-sm font-medium text-neutral-700">Product name</label>
+            <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">Product name</label>
             <input
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="e.g. Sony WH-1000XM5 headphones"
@@ -102,9 +102,9 @@ export default function HomePage() {
           </div>
 
           <div className="sm:col-span-1">
-            <label className="mb-1 block text-sm font-medium text-neutral-700">SKU</label>
+            <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">SKU</label>
             <input
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400"
               value={form.sku}
               onChange={(e) => setForm({ ...form, sku: e.target.value })}
               placeholder="e.g. SONY-WH1000XM5-BLK"
@@ -112,10 +112,10 @@ export default function HomePage() {
           </div>
 
           <div className="sm:col-span-1">
-            <label className="mb-1 block text-sm font-medium text-neutral-700">Category</label>
+            <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">Category</label>
             {categories.length > 0 ? (
               <select
-                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+                className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400"
                 value={form.category}
                 onChange={(e) => {
                   const selected = categories.find((c) => c.name === e.target.value);
@@ -131,23 +131,23 @@ export default function HomePage() {
               </select>
             ) : (
               <input
-                className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+                className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 placeholder="e.g. Headphones"
               />
             )}
             {categoryWarning && (
-              <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                 WooCommerce categories unavailable ({categoryWarning}). Type a category name manually for now.
               </p>
             )}
           </div>
 
           <div className="sm:col-span-1">
-            <label className="mb-1 block text-sm font-medium text-neutral-700">Your name</label>
+            <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">Your name</label>
             <input
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400"
               value={form.createdBy}
               onChange={(e) => setForm({ ...form, createdBy: e.target.value })}
               placeholder="e.g. Alex"
@@ -155,27 +155,27 @@ export default function HomePage() {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-neutral-700">
-              Source URL <span className="font-normal text-neutral-400">(manufacturer page, spec sheet, etc.)</span>
+            <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              Source URL <span className="font-normal text-neutral-500 dark:text-neutral-400">(manufacturer page, spec sheet, etc.)</span>
             </label>
             <input
-              className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
+              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400"
               value={form.sourceUrl}
               onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })}
               placeholder="https://..."
             />
-            <p className="mt-1 text-xs text-neutral-400">
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
               Used to ground the generated description in real facts — nothing is invented beyond this source.
             </p>
           </div>
 
-          {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
+          {error && <p className="text-sm text-red-600 sm:col-span-2 dark:text-red-400">{error}</p>}
 
           <div className="sm:col-span-2">
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+              className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
             >
               {submitting ? "Creating…" : "Create draft"}
             </button>
@@ -186,13 +186,13 @@ export default function HomePage() {
       <section>
         <h2 className="mb-3 text-lg font-medium">Products</h2>
         {loading ? (
-          <p className="text-sm text-neutral-500">Loading…</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading…</p>
         ) : products.length === 0 ? (
-          <p className="text-sm text-neutral-500">No products yet. Create one above.</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">No products yet. Create one above.</p>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+          <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
+              <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-500 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
                 <tr>
                   <th className="px-4 py-2 font-medium">Name</th>
                   <th className="px-4 py-2 font-medium">SKU</th>
@@ -202,14 +202,14 @@ export default function HomePage() {
               </thead>
               <tbody>
                 {products.map((p) => (
-                  <tr key={p._id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
+                  <tr key={p._id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800/50">
                     <td className="px-4 py-2">
-                      <Link href={`/products/${p._id}`} className="font-medium text-neutral-900 hover:underline">
+                      <Link href={`/products/${p._id}`} className="font-medium text-neutral-900 hover:underline dark:text-neutral-100">
                         {p.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-neutral-500">{p.sku}</td>
-                    <td className="px-4 py-2 text-neutral-500">{p.category}</td>
+                    <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{p.sku}</td>
+                    <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{p.category}</td>
                     <td className="px-4 py-2">
                       <StatusBadge status={p.status} />
                     </td>
