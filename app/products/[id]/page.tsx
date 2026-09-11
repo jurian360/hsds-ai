@@ -3,6 +3,14 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import StatusBadge from "@/components/StatusBadge";
+import SourceComposer from "@/components/SourceComposer";
+import SourceList from "@/components/SourceList";
+import {
+  deleteSource,
+  submitSource,
+  type SavedSource,
+  type SourceDraft,
+} from "@/lib/sourceClient";
 
 interface Attribute {
   name: string;
@@ -12,7 +20,7 @@ interface Attribute {
 interface ImageCandidate {
   url: string;
   prompt: string;
-  source: "generated" | "scraped";
+  source: "generated" | "scraped" | "uploaded";
   selected: boolean;
 }
 
@@ -22,6 +30,7 @@ interface ProductDetail {
   sku: string;
   category: string;
   sourceUrl?: string;
+  sources: SavedSource[];
   sourceText?: string;
   shortDescription?: string;
   longDescription?: string;
@@ -40,6 +49,8 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [imagePrompt, setImagePrompt] = useState("");
+  const [addingSource, setAddingSource] = useState(false);
+  const [removingSource, setRemovingSource] = useState<number | null>(null);
 
   async function loadProduct() {
     const res = await fetch(`/api/products/${id}`);
@@ -57,26 +68,12 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
     setError(null);
     setBusy("text");
     try {
-      let sourceText = product.sourceText;
-
-      if (!sourceText) {
-        if (!product.sourceUrl) {
-          throw new Error("No source URL set and no source text available yet — add a source URL to ground the description.");
-        }
-        const scrapeRes = await fetch("/api/scrape", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: product.sourceUrl }),
-        });
-        const scraped = await scrapeRes.json();
-        if (!scrapeRes.ok) throw new Error(scraped.error ?? "Failed to scrape source URL");
-        sourceText = scraped.text;
-      }
-
+      // The server assembles the grounding text from every attached source
+      // (and back-fills from a legacy source URL if that's all a draft has).
       const res = await fetch("/api/generate-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: id, sourceText }),
+        body: JSON.stringify({ productId: id }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Generation failed");
@@ -87,6 +84,33 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function handleAddSource(draft: SourceDraft) {
+    setError(null);
+    setAddingSource(true);
+    try {
+      const updated = await submitSource(id, draft);
+      setProduct(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not read that source");
+    } finally {
+      if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+      setAddingSource(false);
+    }
+  }
+
+  async function handleRemoveSource(index: number) {
+    setError(null);
+    setRemovingSource(index);
+    try {
+      const updated = await deleteSource(id, index);
+      setProduct(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove that source");
+    } finally {
+      setRemovingSource(null);
     }
   }
 
@@ -175,6 +199,17 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
   if (loading) return <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading…</p>;
   if (!product) return <p className="text-sm text-red-600 dark:text-red-400">Product not found.</p>;
 
+  const sourceItems = (product.sources ?? []).map((s) => ({
+    type: s.type,
+    label: s.label,
+    text: s.text,
+    previewUrl: s.imageUrl,
+  }));
+  const totalWords = sourceItems.reduce(
+    (sum, s) => sum + (s.text ? s.text.trim().split(/\s+/).length : 0),
+    0
+  );
+
   return (
     <div className="space-y-8">
       <div>
@@ -201,22 +236,53 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {/* Step 1: Generate text */}
+      {/* Step 1: Sources */}
+      <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="mb-1 flex items-baseline justify-between">
+          <h2 className="font-medium">Sources</h2>
+          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+            {sourceItems.length === 0
+              ? "none yet"
+              : `${sourceItems.length} attached · ${totalWords.toLocaleString()} words`}
+          </span>
+        </div>
+        <p className="mb-3 text-sm text-neutral-500 dark:text-neutral-400">
+          Everything below is generated only from these. Add a link, a PDF datasheet, a
+          photo of the product or its spec sheet, or paste text you already have.
+        </p>
+
+        <SourceComposer onAdd={handleAddSource} busy={addingSource} />
+
+        <div className="mt-3">
+          {addingSource && (
+            <p className="mb-2 text-sm text-neutral-500 dark:text-neutral-400">
+              Reading the new source…
+            </p>
+          )}
+          <SourceList
+            items={sourceItems}
+            onRemove={handleRemoveSource}
+            removingIndex={removingSource}
+          />
+        </div>
+      </section>
+
+      {/* Step 2: Generate text */}
       <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-medium">Description &amp; attributes</h2>
           <button
             onClick={handleGenerateText}
-            disabled={busy === "text"}
+            disabled={busy === "text" || (sourceItems.length === 0 && !product.sourceUrl)}
             className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
           >
             {busy === "text" ? "Generating…" : product.shortDescription ? "Regenerate" : "Generate from source"}
           </button>
         </div>
 
-        {!product.sourceUrl && !product.sourceText && (
+        {sourceItems.length === 0 && !product.sourceUrl && (
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            No source URL was set for this product, so generation has nothing to ground itself in. Edit the draft to add one, or paste source text directly via the API.
+            Nothing to ground generation in yet — add a source above first.
           </p>
         )}
 
@@ -278,7 +344,7 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
         )}
       </section>
 
-      {/* Step 2: Images */}
+      {/* Step 3: Images */}
       <section className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-3 font-medium">Images</h2>
         <div className="mb-4 flex gap-2">
@@ -298,7 +364,10 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
         </div>
 
         {product.images.length === 0 ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">No images generated yet.</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            No images yet. Generate one above, or upload a product photo as an image source —
+            uploaded photos show up here ready to select.
+          </p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {product.images.map((img, i) => (
@@ -312,6 +381,7 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img.url} alt={img.prompt} className="aspect-square w-full object-cover" />
                 <p className="truncate px-2 py-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  {img.source === "generated" ? "AI" : "Uploaded"} ·{" "}
                   {img.selected ? "Selected" : "Click to select"}
                 </p>
               </button>
@@ -320,7 +390,7 @@ export default function ProductReviewPage({ params }: { params: Promise<{ id: st
         )}
       </section>
 
-      {/* Step 3: Approve & publish */}
+      {/* Step 4: Approve & publish */}
       <section className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <button
           onClick={handleApprove}

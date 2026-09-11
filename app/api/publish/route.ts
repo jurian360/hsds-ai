@@ -12,6 +12,18 @@ const WOOCOMMERCE_CONFIGURED =
   !!process.env.WOOCOMMERCE_CONSUMER_KEY &&
   !!process.env.WOOCOMMERCE_CONSUMER_SECRET;
 
+/**
+ * WordPress rejects uploads whose filename extension contradicts the content
+ * type, and uploaded photos aren't always the PNGs the image generator returns.
+ */
+function imageExtension(url: string): string {
+  const mime = url.match(/^data:image\/([a-z0-9.+-]+);/i)?.[1]?.toLowerCase();
+  if (mime === "jpeg" || mime === "jpg") return "jpg";
+  if (mime === "webp") return "webp";
+  if (mime === "gif") return "gif";
+  return "png";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { productId } = await req.json();
@@ -61,7 +73,7 @@ export async function POST(req: NextRequest) {
     for (const img of selectedImages) {
       const uploaded = await uploadMediaFromDataUrl(
         img.url,
-        `${product.sku}-${imageIds.length + 1}.png`
+        `${product.sku}-${imageIds.length + 1}.${imageExtension(img.url)}`
       );
       imageIds.push(uploaded.id);
     }

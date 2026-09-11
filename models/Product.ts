@@ -16,8 +16,22 @@ export interface IAttribute {
 export interface IImageCandidate {
   url: string;
   prompt: string;
-  source: "generated" | "scraped";
+  source: "generated" | "scraped" | "uploaded";
   selected: boolean;
+}
+
+/** Where a piece of grounding material came from. */
+export type SourceType = "url" | "pdf" | "image" | "text";
+
+export interface ISource {
+  type: SourceType;
+  /** Human-readable origin: the URL, the filename, or "Pasted text". */
+  label: string;
+  /** The extracted (or pasted) text that actually grounds generation. */
+  text: string;
+  /** Data URL, for uploaded images only — kept so the photo can be reused. */
+  imageUrl?: string;
+  addedAt?: Date;
 }
 
 export interface IProduct {
@@ -28,7 +42,10 @@ export interface IProduct {
   categoryId?: number; // WooCommerce category ID, once resolved
   sourceUrl?: string;
 
-  // Grounding data extracted from the source URL/search
+  /** Every piece of grounding material attached to this product. */
+  sources: ISource[];
+
+  // Combined grounding text across all sources, rebuilt whenever they change.
   sourceText?: string;
 
   // AI-generated content
@@ -58,8 +75,23 @@ const ImageCandidateSchema = new Schema<IImageCandidate>(
   {
     url: { type: String, required: true },
     prompt: { type: String, default: "" },
-    source: { type: String, enum: ["generated", "scraped"], default: "generated" },
+    source: {
+      type: String,
+      enum: ["generated", "scraped", "uploaded"],
+      default: "generated",
+    },
     selected: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const SourceSchema = new Schema<ISource>(
+  {
+    type: { type: String, enum: ["url", "pdf", "image", "text"], required: true },
+    label: { type: String, required: true },
+    text: { type: String, default: "" },
+    imageUrl: { type: String },
+    addedAt: { type: Date, default: Date.now },
   },
   { _id: false }
 );
@@ -71,6 +103,7 @@ const ProductSchema = new Schema<IProduct>(
     category: { type: String, required: true },
     categoryId: { type: Number },
     sourceUrl: { type: String },
+    sources: { type: [SourceSchema], default: [] },
     sourceText: { type: String },
 
     shortDescription: { type: String },

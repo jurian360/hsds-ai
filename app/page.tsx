@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import StatusBadge from "@/components/StatusBadge";
+import SourceComposer from "@/components/SourceComposer";
+import SourceList from "@/components/SourceList";
+import { submitSource, type SourceDraft } from "@/lib/sourceClient";
 
 interface WooCategory {
   id: number;
@@ -25,16 +28,33 @@ export default function HomePage() {
   const [categoryWarning, setCategoryWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Sources are collected before the draft exists, then extracted server-side
+  // once it does — so uploads can be queued up on this screen.
+  const [sources, setSources] = useState<SourceDraft[]>([]);
 
   const [form, setForm] = useState({
     name: "",
     sku: "",
     category: "",
     categoryId: undefined as number | undefined,
-    sourceUrl: "",
     createdBy: "",
   });
+
+  function addSource(draft: SourceDraft) {
+    setError(null);
+    setSources((current) => [...current, draft]);
+  }
+
+  function removeSource(index: number) {
+    setSources((current) => {
+      const draft = current[index];
+      if (draft?.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+      return current.filter((_, i) => i !== index);
+    });
+  }
 
   async function loadProducts() {
     const res = await fetch("/api/products");
@@ -64,21 +84,57 @@ export default function HomePage() {
 
     setSubmitting(true);
     try {
+      setProgress("Creating draft…");
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          sourceUrl: sources.find((s) => s.type === "url")?.url,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to create product");
 
-      setForm({ name: "", sku: "", category: "", categoryId: undefined, sourceUrl: "", createdBy: form.createdBy });
+      const productId = data.product._id;
+
+      // Extract sources one at a time so a single bad link or unreadable file
+      // doesn't lose the whole draft — the rest still get attached.
+      const failed: string[] = [];
+      for (const [i, draft] of sources.entries()) {
+        setProgress(`Reading source ${i + 1} of ${sources.length}: ${draft.label}`);
+        try {
+          await submitSource(productId, draft);
+        } catch (err) {
+          failed.push(`${draft.label} (${err instanceof Error ? err.message : "failed"})`);
+        }
+      }
+
+      for (const draft of sources) {
+        if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+      }
+
+      // The draft exists either way, so clear the form — resubmitting it would
+      // just collide on SKU.
+      setForm({ name: "", sku: "", category: "", categoryId: undefined, createdBy: form.createdBy });
+      setSources([]);
       await loadProducts();
-      window.location.href = `/products/${data.product._id}`;
+
+      if (failed.length > 0) {
+        // Stay put so the message is readable; the new draft is top of the list.
+        setError(
+          `Draft "${data.product.name}" was created, but these sources could not be read: ` +
+            `${failed.join("; ")}. Open it below to add them again.`
+        );
+        return;
+      }
+
+      window.location.href = `/products/${productId}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSubmitting(false);
+      setProgress(null);
     }
   }
 
@@ -156,29 +212,33 @@ export default function HomePage() {
 
           <div className="sm:col-span-2">
             <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Source URL <span className="font-normal text-neutral-500 dark:text-neutral-400">(manufacturer page, spec sheet, etc.)</span>
+              Sources <span className="font-normal text-neutral-500 dark:text-neutral-400">(link, PDF, image, or pasted text)</span>
             </label>
-            <input
-              className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-500 focus:outline-none dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-neutral-400"
-              value={form.sourceUrl}
-              onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })}
-              placeholder="https://..."
-            />
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              Used to ground the generated description in real facts — nothing is invented beyond this source.
+            <SourceComposer onAdd={addSource} busy={submitting} />
+            <div className="mt-3">
+              <SourceList items={sources} onRemove={removeSource} />
+            </div>
+            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+              Everything generated is grounded in these sources — nothing is invented beyond
+              them. Add as many as you like; you can add more later too.
             </p>
           </div>
 
           {error && <p className="text-sm text-red-600 sm:col-span-2 dark:text-red-400">{error}</p>}
 
           <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
-            >
-              {submitting ? "Creating…" : "Create draft"}
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white"
+              >
+                {submitting ? "Creating…" : "Create draft"}
+              </button>
+              {progress && (
+                <span className="text-sm text-neutral-500 dark:text-neutral-400">{progress}</span>
+              )}
+            </div>
           </div>
         </form>
       </section>
